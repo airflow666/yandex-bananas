@@ -384,7 +384,13 @@ export default class GameScene extends Phaser.Scene {
     const continueBtn = makeButton(this, GAME_W / 2, GAME_H / 2 + 10, 560, 132, t('continueBtn'), async () => {
       continueBtn.disableInteractive();
       audio.click();
+      // Требование 4.7: во время показа рекламы игровой процесс должен быть
+      // на паузе. Звук уже глушится в ads.js; здесь явно ставим сцену на
+      // паузу — защитная мера на случай будущих изменений (сейчас update()
+      // и так неактивен, т.к. this.state === 'over').
+      this.scene.pause();
       const rewarded = await ads.showRewarded();
+      this.scene.resume();
       overlay.destroy();
       if (rewarded) {
         this._revive();

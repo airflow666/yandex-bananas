@@ -28,5 +28,9 @@ game.events.on(Phaser.Core.Events.VISIBLE, () => {
   if (audio.enabled && !audio.suspendedByAd) audio.ctx?.resume();
 });
 
+// Требование модерации 1.6.2.7: взаимодействие с игровым полем не должно
+// открывать браузерное контекстное меню (правый клик на десктопе).
+document.getElementById('game')?.addEventListener('contextmenu', (e) => e.preventDefault());
+
 window.__game = game;   // для автотестов
 window.__saves = saves; // для автотестов

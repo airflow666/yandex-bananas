@@ -91,7 +91,9 @@ class SDKWrapper {
 
   /**
    * Полноэкранная (interstitial) реклама.
-   * resolve после закрытия рекламы (или сразу при ошибке/оффлайне).
+   * Колбэки строго по документации: onOpen/onClose/onError — onOffline
+   * в текущем SDK v2 не существует и никогда не вызывался бы.
+   * resolve после закрытия рекламы (или сразу при ошибке).
    */
   showInterstitial() {
     if (this.isMock) {
@@ -103,7 +105,6 @@ class SDKWrapper {
         callbacks: {
           onClose: (wasShown) => resolve({ wasShown }),
           onError: () => resolve({ wasShown: false }),
-          onOffline: () => resolve({ wasShown: false }),
         },
       });
     });
@@ -185,9 +186,12 @@ class SDKWrapper {
       if (score > prev) localStorage.setItem(LS_LB_KEY, String(score));
       return;
     }
-    // Запись очков доступна только авторизованным — для lite-игрока не дёргаем API
-    if (this.player?.getMode?.() === 'lite') return;
+    // Запись очков доступна только авторизованным и лимитирована 1 запросом/сек —
+    // проверяем isAvailableMethod, как рекомендует документация, до вызова.
+    // Если метод проверки недоступен в конкретной версии SDK — пробуем как раньше.
     try {
+      const available = await this.ysdk.isAvailableMethod?.('leaderboards.setScore');
+      if (available === false) return;
       const lb = await this._getLeaderboardsAPI();
       await lb.setScore(LEADERBOARD_NAME, score);
     } catch (e) {

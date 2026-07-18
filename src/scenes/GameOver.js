@@ -20,7 +20,8 @@ export default class GameOverScene extends Phaser.Scene {
     // Начисляем монеты и фиксируем рекорд сразу — x2 добавит вторую половину
     saves.addCoins(this.runCoins);
     const isRecord = saves.submitScore(this.score);
-    this.sdk.setLeaderboardScore(saves.data.best);
+    // Лидерборд лимитирован 1 запросом/сек — отправляем, только если реально побили рекорд
+    if (isRecord) this.sdk.setLeaderboardScore(saves.data.best);
     this.sdk.showBanner();
 
     this.add.rectangle(0, 0, GAME_W, GAME_H, 0x081c15).setOrigin(0);
