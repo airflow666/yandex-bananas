@@ -12,16 +12,16 @@ export default class ShopScene extends Phaser.Scene {
   create() {
     this.add.rectangle(0, 0, GAME_W, GAME_H, 0x1b4332).setOrigin(0);
 
-    this.add.text(GAME_W / 2, 60, t('skinsTitle'), {
-      fontFamily: FONT, fontSize: '34px', color: '#ffe680', fontStyle: 'bold',
+    this.add.text(GAME_W / 2, 120, t('skinsTitle'), {
+      fontFamily: FONT, fontSize: '68px', color: '#ffe680', fontStyle: 'bold',
     }).setOrigin(0.5);
 
-    this.coinCounter = makeCoinCounter(this, 16, 36, saves.data.coins);
+    this.coinCounter = makeCoinCounter(this, 32, 72, saves.data.coins);
 
     this.cards = [];
-    SKINS.forEach((skin, i) => this._makeCard(skin, 150 + i * 150));
+    SKINS.forEach((skin, i) => this._makeCard(skin, 300 + i * 300));
 
-    makeButton(this, GAME_W / 2, GAME_H - 70, 240, 60, t('back'), () => {
+    makeButton(this, GAME_W / 2, GAME_H - 140, 480, 120, t('back'), () => {
       audio.click();
       this.scene.start('Menu');
     }, { variant: 'gray' });
@@ -30,19 +30,19 @@ export default class ShopScene extends Phaser.Scene {
   _makeCard(skin, y) {
     const card = this.add.container(0, y);
     const bg = this.add.graphics();
-    bg.fillStyle(0x081c15, 0.85).fillRoundedRect(24, 0, GAME_W - 48, 130, 18);
+    bg.fillStyle(0x081c15, 0.85).fillRoundedRect(48, 0, GAME_W - 96, 260, 36);
 
     // превью блока в цветах скина
-    const preview = this.add.graphics({ x: 105, y: 65 });
-    preview.fillStyle(skin.dark, 1).fillRoundedRect(-60, -22, 120, 44, 8);
-    preview.fillStyle(skin.body, 1).fillRoundedRect(-60, -28, 120, 44, 8);
-    preview.lineStyle(5, skin.accent, 1);
+    const preview = this.add.graphics({ x: 210, y: 130 });
+    preview.fillStyle(skin.dark, 1).fillRoundedRect(-120, -44, 240, 88, 16);
+    preview.fillStyle(skin.body, 1).fillRoundedRect(-120, -56, 240, 88, 16);
+    preview.lineStyle(10, skin.accent, 1);
     preview.beginPath();
-    preview.arc(0, 0, 10, Phaser.Math.DegToRad(210), Phaser.Math.DegToRad(330), false);
+    preview.arc(0, 0, 20, Phaser.Math.DegToRad(210), Phaser.Math.DegToRad(330), false);
     preview.strokePath();
 
-    const name = this.add.text(195, 30, t(`skin_${skin.id}`), {
-      fontFamily: FONT, fontSize: '24px', color: '#ffffff', fontStyle: 'bold',
+    const name = this.add.text(390, 60, t(`skin_${skin.id}`), {
+      fontFamily: FONT, fontSize: '48px', color: '#ffffff', fontStyle: 'bold',
     });
 
     card.add([bg, preview, name]);
@@ -67,8 +67,8 @@ export default class ShopScene extends Phaser.Scene {
     else if (skin.adUnlock) { label = t('freeForAd'); variant = 'green'; }
     else { label = `${t('buy')} · ${skin.cost}`; variant = 'yellow'; }
 
-    card.btn = makeButton(this, 320, card.y + 85, 240, 50, label, () => this._onCardClick(card), { fontSize: 18, variant });
-    if (!owned && skin.adUnlock) card.badge = adBadge(this, 210, card.y + 85);
+    card.btn = makeButton(this, 640, card.y + 170, 480, 100, label, () => this._onCardClick(card), { fontSize: 36, variant });
+    if (!owned && skin.adUnlock) card.badge = adBadge(this, 420, card.y + 170);
     if (active) card.btn.disableInteractive();
   }
 

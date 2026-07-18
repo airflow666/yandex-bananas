@@ -12,7 +12,7 @@ export default class BootScene extends Phaser.Scene {
 
   create() {
     const loadingText = this.add.text(GAME_W / 2, GAME_H / 2, '...', {
-      fontFamily: FONT, fontSize: '28px', color: '#ffe680',
+      fontFamily: FONT, fontSize: '56px', color: '#ffe680',
     }).setOrigin(0.5);
 
     (async () => {

@@ -6,11 +6,11 @@ import { audio } from '../systems/audio.js';
 import { t } from '../systems/i18n.js';
 import { getSkin } from '../skins.js';
 
-const BLOCK_H = 56;
-const START_W = 240;
-const PERFECT_TOL = 10;   // допуск для «идеального» попадания, px
-const MIN_OVERLAP = 6;    // меньше — считаем полным промахом
-const DROP_SPEED = 1500;  // px/s падения блока
+const BLOCK_H = 112;
+const START_W = 480;
+const PERFECT_TOL = 20;   // допуск для «идеального» попадания, px
+const MIN_OVERLAP = 12;   // меньше — считаем полным промахом
+const DROP_SPEED = 3000;  // px/s падения блока
 const CAMERA_ANCHOR = 0.62; // вершина башни держится на этой доле высоты экрана
 
 // Фоновые «слои» по высоте башни: джунгли → небо → космос
@@ -74,16 +74,16 @@ export default class GameScene extends Phaser.Scene {
     this.decor = this.add.container(0, 0).setDepth(-5);
     const rng = new Phaser.Math.RandomDataGenerator(['bananas']);
     for (let i = 0; i < 40; i++) {
-      const y = GAME_H - 200 - i * 260;
-      const x = rng.between(30, GAME_W - 30);
+      const y = GAME_H - 400 - i * 520;
+      const x = rng.between(60, GAME_W - 60);
       const g = this.add.graphics({ x, y });
       if (i < 6) { // облака
         g.fillStyle(0xffffff, 0.25);
-        g.fillEllipse(0, 0, rng.between(90, 150), 34);
-        g.fillEllipse(30, -12, 70, 28);
+        g.fillEllipse(0, 0, rng.between(180, 300), 68);
+        g.fillEllipse(60, -24, 140, 56);
       } else { // звёзды
         g.fillStyle(0xffffff, rng.realInRange(0.4, 0.9));
-        g.fillCircle(0, 0, rng.between(2, 4));
+        g.fillCircle(0, 0, rng.between(4, 8));
       }
       g.setScrollFactor(0.35);
       this.decor.add(g);
@@ -91,13 +91,13 @@ export default class GameScene extends Phaser.Scene {
   }
 
   _createBase() {
-    const groundY = GAME_H - 90;
+    const groundY = GAME_H - 180;
     const g = this.add.graphics();
     // земля
-    g.fillStyle(0x40241a, 1).fillRect(-200, groundY, GAME_W + 400, 300);
-    g.fillStyle(0x59a14f, 1).fillRect(-200, groundY, GAME_W + 400, 14);
+    g.fillStyle(0x40241a, 1).fillRect(-400, groundY, GAME_W + 800, 600);
+    g.fillStyle(0x59a14f, 1).fillRect(-400, groundY, GAME_W + 800, 28);
     // обезьянка-строитель рядом с башней
-    this._drawMonkey(g, GAME_W / 2 - START_W / 2 - 58, groundY - 30);
+    this._drawMonkey(g, GAME_W / 2 - START_W / 2 - 116, groundY - 60);
 
     const baseY = groundY - BLOCK_H / 2;
     const base = this._makeBlock(GAME_W / 2, baseY, START_W);
@@ -106,44 +106,44 @@ export default class GameScene extends Phaser.Scene {
 
   _drawMonkey(g, x, y) {
     g.fillStyle(0x6f4e37, 1);
-    g.fillCircle(x, y, 22);          // тело
-    g.fillCircle(x, y - 30, 16);     // голова
-    g.fillCircle(x - 14, y - 36, 7); // уши
-    g.fillCircle(x + 14, y - 36, 7);
+    g.fillCircle(x, y, 44);          // тело
+    g.fillCircle(x, y - 60, 32);     // голова
+    g.fillCircle(x - 28, y - 72, 14); // уши
+    g.fillCircle(x + 28, y - 72, 14);
     g.fillStyle(0xd7b899, 1);
-    g.fillEllipse(x, y - 27, 18, 14); // мордочка
+    g.fillEllipse(x, y - 54, 36, 28); // мордочка
     g.fillStyle(0x2b1d12, 1);
-    g.fillCircle(x - 5, y - 33, 2.4); // глаза
-    g.fillCircle(x + 5, y - 33, 2.4);
+    g.fillCircle(x - 10, y - 66, 4.8); // глаза
+    g.fillCircle(x + 10, y - 66, 4.8);
   }
 
   _createHud() {
-    this.scoreText = this.add.text(GAME_W / 2, 76, '0', {
-      fontFamily: FONT, fontSize: '64px', color: '#ffffff', fontStyle: 'bold',
-      stroke: '#00000055', strokeThickness: 6,
+    this.scoreText = this.add.text(GAME_W / 2, 152, '0', {
+      fontFamily: FONT, fontSize: '128px', color: '#ffffff', fontStyle: 'bold',
+      stroke: '#00000055', strokeThickness: 12,
     }).setOrigin(0.5).setScrollFactor(0).setDepth(100);
 
-    this.coinCounter = makeCoinCounter(this, 16, 36, this.runCoins);
+    this.coinCounter = makeCoinCounter(this, 32, 72, this.runCoins);
     this.coinCounter.setScrollFactor(0).setDepth(100);
 
-    // ниже зоны качающегося блока (block y≈150±30), чтобы не перекрывались
-    this.comboText = this.add.text(GAME_W / 2, 205, '', {
-      fontFamily: FONT, fontSize: '26px', color: '#ffe680', fontStyle: 'bold',
-      stroke: '#00000066', strokeThickness: 5,
+    // ниже зоны качающегося блока (block y≈300±60), чтобы не перекрывались
+    this.comboText = this.add.text(GAME_W / 2, 410, '', {
+      fontFamily: FONT, fontSize: '52px', color: '#ffe680', fontStyle: 'bold',
+      stroke: '#00000066', strokeThickness: 10,
     }).setOrigin(0.5).setScrollFactor(0).setDepth(100);
 
-    this.hintText = this.add.text(GAME_W / 2, GAME_H - 260, t('tapToDrop'), {
-      fontFamily: FONT, fontSize: '22px', color: '#ffffff',
+    this.hintText = this.add.text(GAME_W / 2, GAME_H - 520, t('tapToDrop'), {
+      fontFamily: FONT, fontSize: '44px', color: '#ffffff',
     }).setOrigin(0.5).setScrollFactor(0).setDepth(100).setAlpha(0.9);
     this.tweens.add({ targets: this.hintText, alpha: 0.4, yoyo: true, repeat: -1, duration: 600 });
 
     // Кнопка звука доступна и в геймплее (требование к играм со звуком)
-    this.soundBtn = makeButton(this, GAME_W - 42, 40, 52, 52, saves.data.soundOn ? '♪' : '✕', () => {
+    this.soundBtn = makeButton(this, GAME_W - 84, 80, 104, 104, saves.data.soundOn ? '♪' : '✕', () => {
       const on = saves.toggleSound();
       audio.setEnabled(on);
       this.soundBtn.labelText.setText(on ? '♪' : '✕');
       audio.click();
-    }, { variant: 'gray', fontSize: 22 });
+    }, { variant: 'gray', fontSize: 44 });
     this.soundBtn.setScrollFactor(0).setDepth(100).setAlpha(0.8);
   }
 
@@ -163,17 +163,17 @@ export default class GameScene extends Phaser.Scene {
     const s = this.skin;
     const h = BLOCK_H;
     g.clear();
-    g.fillStyle(s.dark, 1).fillRoundedRect(-w / 2, -h / 2 + 6, w, h - 6, 10);
-    g.fillStyle(s.body, 1).fillRoundedRect(-w / 2, -h / 2, w, h - 10, 10);
-    g.fillStyle(s.light, 0.55).fillRoundedRect(-w / 2 + 6, -h / 2 + 5, w - 12, 8, 4);
+    g.fillStyle(s.dark, 1).fillRoundedRect(-w / 2, -h / 2 + 12, w, h - 12, 20);
+    g.fillStyle(s.body, 1).fillRoundedRect(-w / 2, -h / 2, w, h - 20, 20);
+    g.fillStyle(s.light, 0.55).fillRoundedRect(-w / 2 + 12, -h / 2 + 10, w - 24, 16, 8);
     // бананы-крестики на блоке
-    const count = Math.max(1, Math.floor(w / 55));
+    const count = Math.max(1, Math.floor(w / 110));
     const step = w / (count + 1);
     for (let i = 1; i <= count; i++) {
       const bx = -w / 2 + step * i;
-      g.lineStyle(6, s.accent, 1);
+      g.lineStyle(12, s.accent, 1);
       g.beginPath();
-      g.arc(bx, 6, 11, Phaser.Math.DegToRad(210), Phaser.Math.DegToRad(330), false);
+      g.arc(bx, 12, 22, Phaser.Math.DegToRad(210), Phaser.Math.DegToRad(330), false);
       g.strokePath();
     }
   }
@@ -181,13 +181,13 @@ export default class GameScene extends Phaser.Scene {
   _spawnSwingingBlock(w) {
     const top = this.placed[this.placed.length - 1];
     const camTarget = this._cameraTargetY();
-    const swingY = camTarget + 150;
+    const swingY = camTarget + 300;
 
     this.swingDir = this.floors % 2 === 0 ? 1 : -1;
-    const startX = this.swingDir === 1 ? w / 2 + 10 : GAME_W - w / 2 - 10;
+    const startX = this.swingDir === 1 ? w / 2 + 20 : GAME_W - w / 2 - 20;
     this.swinging = this._makeBlock(startX, swingY, w);
     this.swinging.blockWidth = w;
-    this.swingSpeed = Math.min(230 + this.floors * 8, 560);
+    this.swingSpeed = Math.min(460 + this.floors * 16, 1120);
     this.prevTop = top;
     this.state = 'swinging';
   }
@@ -203,8 +203,8 @@ export default class GameScene extends Phaser.Scene {
     const dt = deltaMs / 1000;
     const w = this.swinging.blockWidth;
     let x = this.swinging.x + this.swingDir * this.swingSpeed * dt;
-    const minX = w / 2 - 30;
-    const maxX = GAME_W - w / 2 + 30;
+    const minX = w / 2 - 60;
+    const maxX = GAME_W - w / 2 + 60;
     if (x <= minX) { x = minX; this.swingDir = 1; }
     if (x >= maxX) { x = maxX; this.swingDir = -1; }
     this.swinging.x = x;
@@ -306,11 +306,11 @@ export default class GameScene extends Phaser.Scene {
     audio.perfect();
     this.comboText.setText(`${t('combo')} x${this.combo + 1}`);
     const fx = this.add.text(GAME_W / 2, GAME_H * 0.42, t('perfect'), {
-      fontFamily: FONT, fontSize: '40px', color: '#7CFC00', fontStyle: 'bold',
-      stroke: '#00000066', strokeThickness: 6,
+      fontFamily: FONT, fontSize: '80px', color: '#7CFC00', fontStyle: 'bold',
+      stroke: '#00000066', strokeThickness: 12,
     }).setOrigin(0.5).setScrollFactor(0).setDepth(200).setScale(0.4);
     this.tweens.add({
-      targets: fx, scale: 1, alpha: { from: 1, to: 0 }, y: '-=70',
+      targets: fx, scale: 1, alpha: { from: 1, to: 0 }, y: '-=140',
       duration: 700, ease: 'Back.easeOut', onComplete: () => fx.destroy(),
     });
     this.cameras.main.flash(120, 255, 255, 180);
@@ -321,16 +321,16 @@ export default class GameScene extends Phaser.Scene {
     audio.cut();
     const w = block.blockWidth;
     const cutW = w - newW;
-    if (cutW < 2) return;
+    if (cutW < 4) return;
     const side = block.x < newX ? -1 : 1; // с какой стороны свес
     const pieceX = side === -1 ? block.x - w / 2 + cutW / 2 : block.x + w / 2 - cutW / 2;
     const piece = this.add.graphics({ x: pieceX, y: block.y });
     const s = this.skin;
-    piece.fillStyle(s.dark, 1).fillRoundedRect(-cutW / 2, -BLOCK_H / 2 + 6, cutW, BLOCK_H - 6, 8);
-    piece.fillStyle(s.body, 1).fillRoundedRect(-cutW / 2, -BLOCK_H / 2, cutW, BLOCK_H - 10, 8);
+    piece.fillStyle(s.dark, 1).fillRoundedRect(-cutW / 2, -BLOCK_H / 2 + 12, cutW, BLOCK_H - 12, 16);
+    piece.fillStyle(s.body, 1).fillRoundedRect(-cutW / 2, -BLOCK_H / 2, cutW, BLOCK_H - 20, 16);
     this.tweens.add({
       targets: piece,
-      y: piece.y + 700,
+      y: piece.y + 1400,
       angle: side * 120,
       alpha: 0.2,
       duration: 900,
@@ -345,7 +345,7 @@ export default class GameScene extends Phaser.Scene {
     this.cameras.main.shake(250, 0.012);
     this.tweens.add({
       targets: block,
-      y: block.y + 900,
+      y: block.y + 1800,
       angle: block.x < this.prevTop.x ? -160 : 160,
       duration: 1000,
       ease: 'Quad.easeIn',
@@ -371,17 +371,17 @@ export default class GameScene extends Phaser.Scene {
     dim.setInteractive(); // блокирует тапы «сквозь» оверлей
 
     const panel = this.add.graphics();
-    panel.fillStyle(0x1b4332, 0.98).fillRoundedRect(40, GAME_H / 2 - 190, GAME_W - 80, 340, 24);
+    panel.fillStyle(0x1b4332, 0.98).fillRoundedRect(80, GAME_H / 2 - 380, GAME_W - 160, 680, 48);
 
-    const title = this.add.text(GAME_W / 2, GAME_H / 2 - 130, t('secondLife'), {
-      fontFamily: FONT, fontSize: '36px', color: '#ffe680', fontStyle: 'bold',
+    const title = this.add.text(GAME_W / 2, GAME_H / 2 - 260, t('secondLife'), {
+      fontFamily: FONT, fontSize: '72px', color: '#ffe680', fontStyle: 'bold',
     }).setOrigin(0.5);
-    const desc = this.add.text(GAME_W / 2, GAME_H / 2 - 75, t('secondLifeDesc'), {
-      fontFamily: FONT, fontSize: '20px', color: '#d8f3dc', align: 'center',
-      wordWrap: { width: GAME_W - 130 },
+    const desc = this.add.text(GAME_W / 2, GAME_H / 2 - 150, t('secondLifeDesc'), {
+      fontFamily: FONT, fontSize: '40px', color: '#d8f3dc', align: 'center',
+      wordWrap: { width: GAME_W - 260 },
     }).setOrigin(0.5);
 
-    const continueBtn = makeButton(this, GAME_W / 2, GAME_H / 2 + 5, 280, 66, t('continueBtn'), async () => {
+    const continueBtn = makeButton(this, GAME_W / 2, GAME_H / 2 + 10, 560, 132, t('continueBtn'), async () => {
       continueBtn.disableInteractive();
       audio.click();
       const rewarded = await ads.showRewarded();
@@ -392,13 +392,13 @@ export default class GameScene extends Phaser.Scene {
         this._finishRun();
       }
     }, { variant: 'green' });
-    const badge = adBadge(this, GAME_W / 2 - 118, GAME_H / 2 + 5);
+    const badge = adBadge(this, GAME_W / 2 - 236, GAME_H / 2 + 10);
 
-    const declineBtn = makeButton(this, GAME_W / 2, GAME_H / 2 + 95, 280, 54, t('noThanks'), () => {
+    const declineBtn = makeButton(this, GAME_W / 2, GAME_H / 2 + 190, 560, 108, t('noThanks'), () => {
       audio.click();
       overlay.destroy();
       this._finishRun();
-    }, { variant: 'gray', fontSize: 20 });
+    }, { variant: 'gray', fontSize: 40 });
 
     overlay.add([dim, panel, title, desc, continueBtn, badge, declineBtn]);
   }

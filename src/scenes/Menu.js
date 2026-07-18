@@ -15,44 +15,44 @@ export default class MenuScene extends Phaser.Scene {
     // декоративные бананы на фоне
     const rng = new Phaser.Math.RandomDataGenerator(['menu']);
     for (let i = 0; i < 12; i++) {
-      drawBananaIcon(this, rng.between(20, GAME_W - 20), rng.between(20, GAME_H - 20), rng.realInRange(0.7, 1.6))
+      drawBananaIcon(this, rng.between(40, GAME_W - 40), rng.between(40, GAME_H - 40), rng.realInRange(0.7, 1.6))
         .setAlpha(0.12).setAngle(rng.between(0, 360));
     }
 
-    this.add.text(GAME_W / 2, 170, t('title'), {
-      fontFamily: FONT, fontSize: '58px', color: '#ffe680', fontStyle: 'bold',
-      align: 'center', stroke: '#7a5c00', strokeThickness: 8,
+    this.add.text(GAME_W / 2, 340, t('title'), {
+      fontFamily: FONT, fontSize: '116px', color: '#ffe680', fontStyle: 'bold',
+      align: 'center', stroke: '#7a5c00', strokeThickness: 16,
     }).setOrigin(0.5);
-    drawBananaIcon(this, GAME_W / 2, 285, 2.2);
+    drawBananaIcon(this, GAME_W / 2, 570, 2.2);
 
-    this.coinCounter = makeCoinCounter(this, 16, 36, saves.data.coins);
+    this.coinCounter = makeCoinCounter(this, 32, 72, saves.data.coins);
 
-    this.add.text(GAME_W - 16, 36, `${t('best')}: ${saves.data.best}`, {
-      fontFamily: FONT, fontSize: '20px', color: '#d8f3dc', fontStyle: 'bold',
+    this.add.text(GAME_W - 32, 72, `${t('best')}: ${saves.data.best}`, {
+      fontFamily: FONT, fontSize: '40px', color: '#d8f3dc', fontStyle: 'bold',
     }).setOrigin(1, 0.5);
 
-    makeButton(this, GAME_W / 2, 430, 300, 84, t('play'), () => {
+    makeButton(this, GAME_W / 2, 860, 600, 168, t('play'), () => {
       audio.click();
       this.scene.start('Game');
-    }, { variant: 'green', fontSize: 34 });
+    }, { variant: 'green', fontSize: 68 });
 
-    makeButton(this, GAME_W / 2, 540, 300, 62, t('shop'), () => {
+    makeButton(this, GAME_W / 2, 1080, 600, 124, t('shop'), () => {
       audio.click();
       this.scene.start('Shop');
     });
 
-    makeButton(this, GAME_W / 2, 620, 300, 62, t('leaderboard'), () => {
+    makeButton(this, GAME_W / 2, 1240, 600, 124, t('leaderboard'), () => {
       audio.click();
       this.scene.start('Leaderboard');
     });
 
     // Переключатель звука
-    this.soundBtn = makeButton(this, GAME_W - 50, GAME_H - 50, 64, 64, saves.data.soundOn ? '♪' : '✕', () => {
+    this.soundBtn = makeButton(this, GAME_W - 100, GAME_H - 100, 128, 128, saves.data.soundOn ? '♪' : '✕', () => {
       const on = saves.toggleSound();
       audio.setEnabled(on);
       this.soundBtn.labelText.setText(on ? '♪' : '✕');
       audio.click();
-    }, { variant: 'gray', fontSize: 28 });
+    }, { variant: 'gray', fontSize: 56 });
 
     // Обязательный сигнал платформе «игра загрузилась» — после первой отрисовки меню
     this.sdk.loadingReady();
@@ -69,29 +69,29 @@ export default class MenuScene extends Phaser.Scene {
     dim.setInteractive();
 
     const panel = this.add.graphics();
-    panel.fillStyle(0x081c15, 0.98).fillRoundedRect(40, GAME_H / 2 - 200, GAME_W - 80, 380, 24);
-    panel.lineStyle(3, 0xffd93b, 1).strokeRoundedRect(40, GAME_H / 2 - 200, GAME_W - 80, 380, 24);
+    panel.fillStyle(0x081c15, 0.98).fillRoundedRect(80, GAME_H / 2 - 400, GAME_W - 160, 760, 48);
+    panel.lineStyle(6, 0xffd93b, 1).strokeRoundedRect(80, GAME_H / 2 - 400, GAME_W - 160, 760, 48);
 
-    const title = this.add.text(GAME_W / 2, GAME_H / 2 - 150, t('dailyBonus'), {
-      fontFamily: FONT, fontSize: '32px', color: '#ffe680', fontStyle: 'bold',
+    const title = this.add.text(GAME_W / 2, GAME_H / 2 - 300, t('dailyBonus'), {
+      fontFamily: FONT, fontSize: '64px', color: '#ffe680', fontStyle: 'bold',
     }).setOrigin(0.5);
-    const streakText = this.add.text(GAME_W / 2, GAME_H / 2 - 100, `${t('dailyStreak')} ${streak}`, {
-      fontFamily: FONT, fontSize: '22px', color: '#95d5b2',
+    const streakText = this.add.text(GAME_W / 2, GAME_H / 2 - 200, `${t('dailyStreak')} ${streak}`, {
+      fontFamily: FONT, fontSize: '44px', color: '#95d5b2',
     }).setOrigin(0.5);
 
-    const icon = drawBananaIcon(this, GAME_W / 2 - 45, GAME_H / 2 - 40, 1.4);
-    const amountText = this.add.text(GAME_W / 2 - 10, GAME_H / 2 - 40, `+${amount}`, {
-      fontFamily: FONT, fontSize: '40px', color: '#ffffff', fontStyle: 'bold',
+    const icon = drawBananaIcon(this, GAME_W / 2 - 90, GAME_H / 2 - 80, 1.4);
+    const amountText = this.add.text(GAME_W / 2 - 20, GAME_H / 2 - 80, `+${amount}`, {
+      fontFamily: FONT, fontSize: '80px', color: '#ffffff', fontStyle: 'bold',
     }).setOrigin(0, 0.5);
 
-    const claimBtn = makeButton(this, GAME_W / 2, GAME_H / 2 + 40, 290, 60, t('claim'), () => {
+    const claimBtn = makeButton(this, GAME_W / 2, GAME_H / 2 + 80, 580, 120, t('claim'), () => {
       audio.coin();
       saves.claimDailyBonus(1);
       this._refreshCoins();
       overlay.destroy();
     }, { variant: 'yellow' });
 
-    const claimX2Btn = makeButton(this, GAME_W / 2, GAME_H / 2 + 120, 290, 60, t('claimX2'), async () => {
+    const claimX2Btn = makeButton(this, GAME_W / 2, GAME_H / 2 + 240, 580, 120, t('claimX2'), async () => {
       claimX2Btn.disableInteractive();
       audio.click();
       const rewarded = await ads.showRewarded();
@@ -104,7 +104,7 @@ export default class MenuScene extends Phaser.Scene {
       this._refreshCoins();
       overlay.destroy();
     }, { variant: 'green' });
-    const badge = adBadge(this, GAME_W / 2 - 122, GAME_H / 2 + 120);
+    const badge = adBadge(this, GAME_W / 2 - 244, GAME_H / 2 + 240);
 
     overlay.add([dim, panel, title, streakText, icon, amountText, claimBtn, claimX2Btn, badge]);
   }
