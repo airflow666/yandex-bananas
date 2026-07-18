@@ -126,8 +126,10 @@ export default class GameScene extends Phaser.Scene {
     this.coinCounter = makeCoinCounter(this, 16, 36, this.runCoins);
     this.coinCounter.setScrollFactor(0).setDepth(100);
 
-    this.comboText = this.add.text(GAME_W / 2, 130, '', {
+    // ниже зоны качающегося блока (block y≈150±30), чтобы не перекрывались
+    this.comboText = this.add.text(GAME_W / 2, 205, '', {
       fontFamily: FONT, fontSize: '26px', color: '#ffe680', fontStyle: 'bold',
+      stroke: '#00000066', strokeThickness: 5,
     }).setOrigin(0.5).setScrollFactor(0).setDepth(100);
 
     this.hintText = this.add.text(GAME_W / 2, GAME_H - 260, t('tapToDrop'), {

@@ -38,10 +38,10 @@ class Saves {
     }, 500);
   }
 
-  /** Немедленная запись — для критичных моментов (game over, покупка). */
+  /** Немедленная запись с flush — для критичных моментов (game over, покупка). */
   saveNow() {
     clearTimeout(this._saveTimer);
-    this.sdk?.setData(this.data);
+    this.sdk?.setData(this.data, true);
   }
 
   addCoins(n) {

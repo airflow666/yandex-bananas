@@ -152,13 +152,29 @@ class SDKWrapper {
     }
   }
 
-  async setData(data) {
+  /** flush=true — немедленная запись на сервер (game over, покупки). */
+  async setData(data, flush = false) {
     if (!this.player) return;
     try {
-      await this.player.setData(data);
+      await this.player.setData(data, flush);
     } catch (e) {
       console.warn('setData failed', e);
     }
+  }
+
+  /** Актуальный API — ysdk.leaderboards; старый getLeaderboards() оставлен как fallback. */
+  async _getLeaderboardsAPI() {
+    if (this.ysdk.leaderboards) {
+      return {
+        setScore: (name, score) => this.ysdk.leaderboards.setScore(name, score),
+        getEntries: (name, opts) => this.ysdk.leaderboards.getEntries(name, opts),
+      };
+    }
+    const lb = await this.ysdk.getLeaderboards();
+    return {
+      setScore: (name, score) => lb.setLeaderboardScore(name, score),
+      getEntries: (name, opts) => lb.getLeaderboardEntries(name, opts),
+    };
   }
 
   async setLeaderboardScore(score) {
@@ -168,9 +184,11 @@ class SDKWrapper {
       if (score > prev) localStorage.setItem(LS_LB_KEY, String(score));
       return;
     }
+    // Запись очков доступна только авторизованным — для lite-игрока не дёргаем API
+    if (this.player?.getMode?.() === 'lite') return;
     try {
-      const lb = await this.ysdk.getLeaderboards();
-      await lb.setLeaderboardScore(LEADERBOARD_NAME, score);
+      const lb = await this._getLeaderboardsAPI();
+      await lb.setScore(LEADERBOARD_NAME, score);
     } catch (e) {
       console.warn('setLeaderboardScore failed', e);
     }
@@ -194,17 +212,17 @@ class SDKWrapper {
       return { entries: fake.map((e, i) => ({ rank: i + 1, ...e })) };
     }
     try {
-      const lb = await this.ysdk.getLeaderboards();
+      const lb = await this._getLeaderboardsAPI();
       let res;
       try {
-        res = await lb.getLeaderboardEntries(LEADERBOARD_NAME, {
+        res = await lb.getEntries(LEADERBOARD_NAME, {
           quantityTop: 10,
           includeUser: true,
           quantityAround: 2,
         });
       } catch {
         // includeUser падает для неавторизованных — показываем хотя бы топ
-        res = await lb.getLeaderboardEntries(LEADERBOARD_NAME, { quantityTop: 10 });
+        res = await lb.getEntries(LEADERBOARD_NAME, { quantityTop: 10 });
       }
       const entries = (res.entries || []).map((e) => ({
         rank: e.rank,
