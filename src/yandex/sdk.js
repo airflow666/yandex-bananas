@@ -1,8 +1,9 @@
 /**
  * Обёртка над Yandex Games SDK v2.
  *
- * На платформе Яндекс Игр глобальный YaGames загружается из /sdk.js
- * (подключается в index.html асинхронно, см. комментарий там).
+ * На платформе Яндекс Игр глобальный YaGames загружается из /sdk.js —
+ * подключается программно из этого файла (см. loadSdkScript ниже), а не
+ * тегом в index.html, чтобы не зависеть от CSP хостинга площадки.
  * Локально (dev-сервер, тесты) его нет — тогда работает mock-режим:
  * реклама «показывается» мгновенно с записью в лог, данные хранятся
  * в localStorage, лидерборд отдаёт фейковый топ.
@@ -251,15 +252,27 @@ function timeout(ms) {
   return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
+/**
+ * Программно создаёт и подключает <script src="/sdk.js">. Обработчики
+ * назначены через JS-свойства (.onload/.onerror), а не HTML-атрибуты —
+ * в отличие от инлайновых onload="..." в разметке, это не подпадает под
+ * ограничения CSP хостинга на инлайн-скрипты, и не имеет гонки состояний
+ * (элемент создаётся и слушатели вешаются синхронно, до начала загрузки).
+ */
+function loadSdkScript() {
+  return new Promise((resolve) => {
+    const script = document.createElement('script');
+    script.async = true;
+    script.src = '/sdk.js';
+    script.onload = () => resolve(true);
+    script.onerror = () => resolve(false);
+    document.head.appendChild(script);
+  });
+}
+
 export async function initSDK() {
   let ysdk = null;
-  // Скрипт /sdk.js подключён с async (см. index.html) — его порядок выполнения
-  // относительно этого модуля не гарантирован, поэтому ждём реальный
-  // onload/onerror, а не просто проверяем window.YaGames синхронно.
-  const scriptLoaded = await Promise.race([
-    window.__yaSdkScriptLoaded ?? Promise.resolve(false),
-    timeout(INIT_TIMEOUT_MS),
-  ]);
+  const scriptLoaded = await Promise.race([loadSdkScript(), timeout(INIT_TIMEOUT_MS)]);
   if (scriptLoaded && typeof window.YaGames !== 'undefined') {
     try {
       // На некоторых площадках/встраиваниях init() может зависнуть без reject —
