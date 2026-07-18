@@ -11,6 +11,8 @@ const DICT = {
     best: 'Рекорд',
     coins: 'Бананы',
     floors: 'этажей',
+    floorForms: ['этаж', 'этажа', 'этажей'],
+    player: 'Игрок',
     perfect: 'ИДЕАЛЬНО!',
     combo: 'КОМБО',
     gameOver: 'Башня рухнула!',
@@ -24,7 +26,7 @@ const DICT = {
     menu: 'Меню',
     watchAd: 'за рекламу',
     dailyBonus: 'Ежедневный бонус!',
-    dailyStreak: 'День подряд:',
+    dailyStreak: 'Дней подряд:',
     claim: 'ЗАБРАТЬ',
     claimX2: 'ЗАБРАТЬ x2',
     skinsTitle: 'МАГАЗИН СКИНОВ',
@@ -37,7 +39,7 @@ const DICT = {
     yourResult: 'Ты',
     back: 'Назад',
     loading: 'Загрузка...',
-    lbUnavailable: 'Рейтинг недоступен.\nЗайди через Яндекс Игры',
+    lbUnavailable: 'Войди в аккаунт Яндекса,\nчтобы участвовать в рейтинге',
     skin_classic: 'Классика',
     skin_golden: 'Золотой',
     skin_space: 'Космический',
@@ -53,6 +55,8 @@ const DICT = {
     best: 'Best',
     coins: 'Bananas',
     floors: 'floors',
+    floorForms: ['floor', 'floors'],
+    player: 'Player',
     perfect: 'PERFECT!',
     combo: 'COMBO',
     gameOver: 'The tower collapsed!',
@@ -79,7 +83,7 @@ const DICT = {
     yourResult: 'You',
     back: 'Back',
     loading: 'Loading...',
-    lbUnavailable: 'Rating unavailable.\nOpen via Yandex Games',
+    lbUnavailable: 'Sign in to your Yandex account\nto join the rating',
     skin_classic: 'Classic',
     skin_golden: 'Golden',
     skin_space: 'Space',
@@ -87,12 +91,31 @@ const DICT = {
   },
 };
 
+// Русский показываем всему русскоязычному каталогу Яндекса, не только lang=ru
+const RU_LANGS = ['ru', 'be', 'kk', 'uk', 'uz'];
+
 let currentLang = 'ru';
 
 export function setLang(lang) {
-  currentLang = DICT[lang] ? lang : 'en';
+  currentLang = RU_LANGS.includes(lang) ? 'ru' : 'en';
 }
 
 export function t(key) {
   return DICT[currentLang][key] ?? DICT.en[key] ?? key;
+}
+
+/**
+ * Правильно склонённое слово для числа: этаж / этажа / этажей.
+ * forms в словаре: [один, два-четыре, много] для ru; [one, many] для en.
+ */
+export function pluralWord(n, key) {
+  const forms = DICT[currentLang][key] ?? DICT.en[key];
+  if (currentLang === 'ru') {
+    const n10 = n % 10;
+    const n100 = n % 100;
+    if (n10 === 1 && n100 !== 11) return forms[0];
+    if (n10 >= 2 && n10 <= 4 && (n100 < 12 || n100 > 14)) return forms[1];
+    return forms[2];
+  }
+  return n === 1 ? forms[0] : forms[1];
 }

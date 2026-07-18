@@ -7,6 +7,8 @@
  * в localStorage, лидерборд отдаёт фейковый топ.
  */
 
+import { t } from '../systems/i18n.js';
+
 const LS_DATA_KEY = 'bananaTower.save';
 const LS_LB_KEY = 'bananaTower.mockLeaderboard';
 
@@ -24,7 +26,7 @@ class MockPlayer {
     localStorage.setItem(LS_DATA_KEY, JSON.stringify(data));
     return Promise.resolve();
   }
-  getName() { return 'Игрок'; }
+  getName() { return t('player'); }
   getPhoto() { return null; }
   getMode() { return 'lite'; }
 }
@@ -42,17 +44,18 @@ class SDKWrapper {
     this.player = null;
     this.lang = 'ru';
     this._gameplayRunning = false;
+    this._loadingReadySent = false;
   }
 
   async init() {
     if (this.isMock) {
       this.player = new MockPlayer();
-      const nav = (navigator.language || 'ru').toLowerCase();
-      this.lang = nav.startsWith('ru') ? 'ru' : 'en';
+      // сырой код языка ('ru', 'be', 'en'...) — маппинг делает i18n.setLang
+      this.lang = (navigator.language || 'ru').toLowerCase().split('-')[0];
       mockLog('init (mock mode)');
       return;
     }
-    this.lang = this.ysdk.environment?.i18n?.lang === 'ru' ? 'ru' : 'en';
+    this.lang = this.ysdk.environment?.i18n?.lang || 'en';
     try {
       this.player = await this.ysdk.getPlayer({ scopes: false });
     } catch (e) {
@@ -61,8 +64,10 @@ class SDKWrapper {
     }
   }
 
-  /** Сообщить платформе, что игра загрузилась (обязательно для модерации). */
+  /** Сообщить платформе, что игра загрузилась (обязательно для модерации; ровно один раз). */
   loadingReady() {
+    if (this._loadingReadySent) return;
+    this._loadingReadySent = true;
     if (this.isMock) { mockLog('LoadingAPI.ready'); return; }
     this.ysdk.features?.LoadingAPI?.ready?.();
   }
@@ -184,20 +189,26 @@ class SDKWrapper {
         { name: 'StackMaster', score: 96 }, { name: 'Кожура', score: 71 },
         { name: 'MinionFan', score: 44 }, { name: 'Джунгли', score: 23 },
       ];
-      fake.push({ name: 'Игрок', score: myScore, isPlayer: true });
+      fake.push({ name: t('player'), score: myScore, isPlayer: true });
       fake.sort((a, b) => b.score - a.score);
       return { entries: fake.map((e, i) => ({ rank: i + 1, ...e })) };
     }
     try {
       const lb = await this.ysdk.getLeaderboards();
-      const res = await lb.getLeaderboardEntries(LEADERBOARD_NAME, {
-        quantityTop: 10,
-        includeUser: true,
-        quantityAround: 2,
-      });
+      let res;
+      try {
+        res = await lb.getLeaderboardEntries(LEADERBOARD_NAME, {
+          quantityTop: 10,
+          includeUser: true,
+          quantityAround: 2,
+        });
+      } catch {
+        // includeUser падает для неавторизованных — показываем хотя бы топ
+        res = await lb.getLeaderboardEntries(LEADERBOARD_NAME, { quantityTop: 10 });
+      }
       const entries = (res.entries || []).map((e) => ({
         rank: e.rank,
-        name: e.player?.publicName || 'Player',
+        name: e.player?.publicName || t('player'),
         score: e.score,
         isPlayer: e.player?.uniqueID && res.userRank && e.rank === res.userRank,
       }));

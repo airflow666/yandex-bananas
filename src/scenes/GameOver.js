@@ -3,7 +3,7 @@ import { GAME_W, GAME_H, FONT, makeButton, drawBananaIcon, adBadge } from '../ui
 import { saves } from '../systems/saves.js';
 import { ads } from '../systems/ads.js';
 import { audio } from '../systems/audio.js';
-import { t } from '../systems/i18n.js';
+import { t, pluralWord } from '../systems/i18n.js';
 
 export default class GameOverScene extends Phaser.Scene {
   constructor() { super('GameOver'); }
@@ -33,7 +33,8 @@ export default class GameOverScene extends Phaser.Scene {
     this.add.text(GAME_W / 2, 235, String(this.score), {
       fontFamily: FONT, fontSize: '110px', color: '#ffffff', fontStyle: 'bold',
     }).setOrigin(0.5);
-    this.add.text(GAME_W / 2, 310, t('floors'), {
+    // «этаж / этажа / этажей» — число уже крупно выше
+    this.add.text(GAME_W / 2, 310, pluralWord(this.score, 'floorForms'), {
       fontFamily: FONT, fontSize: '24px', color: '#95d5b2',
     }).setOrigin(0.5);
 

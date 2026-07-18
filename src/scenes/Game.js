@@ -42,7 +42,11 @@ export default class GameScene extends Phaser.Scene {
     this._createHud();
     this._spawnSwingingBlock(START_W);
 
-    this.input.on('pointerdown', this._onTap, this);
+    // тап по интерактивным элементам (кнопка звука, оверлеи) не должен ронять блок
+    this.input.on('pointerdown', (pointer, currentlyOver) => {
+      if (currentlyOver.length > 0) return;
+      this._onTap();
+    });
     this.keySpace = this.input.keyboard?.addKey(Phaser.Input.Keyboard.KeyCodes.SPACE);
     this.keySpace?.on('down', this._onTap, this);
 
@@ -130,6 +134,15 @@ export default class GameScene extends Phaser.Scene {
       fontFamily: FONT, fontSize: '22px', color: '#ffffff',
     }).setOrigin(0.5).setScrollFactor(0).setDepth(100).setAlpha(0.9);
     this.tweens.add({ targets: this.hintText, alpha: 0.4, yoyo: true, repeat: -1, duration: 600 });
+
+    // Кнопка звука доступна и в геймплее (требование к играм со звуком)
+    this.soundBtn = makeButton(this, GAME_W - 42, 40, 52, 52, saves.data.soundOn ? '♪' : '✕', () => {
+      const on = saves.toggleSound();
+      audio.setEnabled(on);
+      this.soundBtn.labelText.setText(on ? '♪' : '✕');
+      audio.click();
+    }, { variant: 'gray', fontSize: 22 });
+    this.soundBtn.setScrollFactor(0).setDepth(100).setAlpha(0.8);
   }
 
   // ---------- блоки ----------
