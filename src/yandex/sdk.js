@@ -1,8 +1,8 @@
 /**
  * Обёртка над Yandex Games SDK v2.
  *
- * На платформе Яндекс Игр глобальный YaGames загружается из
- * https://yandex.ru/games/sdk/v2 (подключается в index.html).
+ * На платформе Яндекс Игр глобальный YaGames загружается из /sdk.js
+ * (подключается в index.html асинхронно, см. комментарий там).
  * Локально (dev-сервер, тесты) его нет — тогда работает mock-режим:
  * реклама «показывается» мгновенно с записью в лог, данные хранятся
  * в localStorage, лидерборд отдаёт фейковый топ.
@@ -249,7 +249,14 @@ function timeout(ms) {
 
 export async function initSDK() {
   let ysdk = null;
-  if (typeof window.YaGames !== 'undefined') {
+  // Скрипт /sdk.js подключён с async (см. index.html) — его порядок выполнения
+  // относительно этого модуля не гарантирован, поэтому ждём реальный
+  // onload/onerror, а не просто проверяем window.YaGames синхронно.
+  const scriptLoaded = await Promise.race([
+    window.__yaSdkScriptLoaded ?? Promise.resolve(false),
+    timeout(INIT_TIMEOUT_MS),
+  ]);
+  if (scriptLoaded && typeof window.YaGames !== 'undefined') {
     try {
       // На некоторых площадках/встраиваниях init() может зависнуть без reject —
       // ограничиваем ожидание, чтобы игра не застряла на загрузке навсегда.

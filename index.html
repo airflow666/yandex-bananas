@@ -21,11 +21,20 @@
       height: 100%;
     }
   </style>
-  <!-- SDK Яндекс Игр: абсолютный URL на домене Яндекса — не зависит от того,
-       на каком хостинге/CDN лежит сама игра (относительный "/sdk.js" резолвится
-       относительно origin игры и там 404-ится). Локально /games/sdk/v2 недоступен —
-       игра переключится на mock-режим. -->
-  <script src="https://yandex.ru/games/sdk/v2"></script>
+  <!-- Yandex Games SDK: подключение строго по документации —
+       https://yandex.ru/dev/games/doc/ru/sdk/sdk-about#connect
+       Скрипт async, поэтому порядок его выполнения относительно
+       ./src/main.js (type=module, всегда deferred) не гарантирован —
+       ждём реального onload/onerror через промис, а не полагаемся
+       на порядок тегов. Локально /sdk.js всегда 404 — игра корректно
+       уходит в mock-режим (см. onerror ниже и src/yandex/sdk.js). -->
+  <script>
+    window.__yaSdkScriptLoaded = new Promise((resolve) => {
+      window.__yaSdkOnLoad = () => resolve(true);
+      window.__yaSdkOnError = () => resolve(false);
+    });
+  </script>
+  <script async src="/sdk.js" onload="__yaSdkOnLoad()" onerror="__yaSdkOnError()"></script>
 </head>
 <body>
   <div id="game"></div>
