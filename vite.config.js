@@ -25,6 +25,12 @@ export default defineConfig({
     assetsInlineLimit: 8192,
     chunkSizeWarningLimit: 1600,
     modulePreload: false,
+    // Файлы из подпапки dist/assets/ стабильно 404-ились на реальном
+    // хостинге Яндекс Игр (S3), хотя index.html из корня загружался
+    // нормально. Кладём бандл прямо в корень dist/, без подпапки —
+    // единственное оставшееся структурное отличие между тем, что
+    // работает, и тем, что не работает.
+    assetsDir: '',
   },
   server: {
     host: true,
