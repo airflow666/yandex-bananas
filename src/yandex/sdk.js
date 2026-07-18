@@ -239,17 +239,30 @@ class SDKWrapper {
 }
 
 /** Инициализация: пробуем настоящий SDK, при неудаче — mock. */
+const INIT_TIMEOUT_MS = 10000;
+
+/** Промис, который резолвится через ms — используется, чтобы не ждать SDK вечно. */
+function timeout(ms) {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
 export async function initSDK() {
   let ysdk = null;
   if (typeof window.YaGames !== 'undefined') {
     try {
-      ysdk = await window.YaGames.init();
+      // На некоторых площадках/встраиваниях init() может зависнуть без reject —
+      // ограничиваем ожидание, чтобы игра не застряла на загрузке навсегда.
+      ysdk = (await Promise.race([window.YaGames.init(), timeout(INIT_TIMEOUT_MS)])) || null;
     } catch (e) {
       console.warn('YaGames.init failed, falling back to mock', e);
     }
   }
   const wrapper = new SDKWrapper(ysdk);
-  await wrapper.init();
+  try {
+    await Promise.race([wrapper.init(), timeout(INIT_TIMEOUT_MS)]);
+  } catch (e) {
+    console.warn('SDK wrapper init failed', e);
+  }
   window.__sdk = wrapper; // для отладки и автотестов
   return wrapper;
 }
