@@ -1,12 +1,15 @@
 /**
  * Прогресс игрока: монеты, рекорд, скины, звук, ежедневный бонус.
- * Хранится в облаке Яндекса (player.setData) с fallback на localStorage внутри SDK-обёртки.
  *
- * Требование модерации 1.9: обновление страницы не должно влиять на
- * сохранённые данные — поэтому любое реальное игровое прогресс-событие
- * (монеты, рекорд, покупка) пишется немедленно (saveNow/flush=true).
- * Дебаунс (save()) оставлен только для некритичных настроек (звук).
+ * Запись идёт через core/storage.ts: изменение сразу фиксируется в
+ * localStorage и объединяется в одну облачную запись. Прежняя схема слала
+ * `setData(flush=true)` на каждое событие — три подряд в одном тике при
+ * завершении забега, из-за чего покупка или рекорд могли молча потеряться.
+ * Обновление страницы сразу после изменения больше ничего не теряет:
+ * локальная копия обновляется синхронно, до всякой сети.
  */
+
+import { SaveStore } from '../core/storage';
 
 const DEFAULTS = {
   coins: 0,
@@ -19,72 +22,53 @@ const DEFAULTS = {
 
 class Saves {
   constructor() {
-    this.sdk = null;
-    this.data = { ...DEFAULTS };
-    this._saveTimer = null;
+    this.store = new SaveStore(DEFAULTS);
   }
 
-  async load(sdk) {
-    this.sdk = sdk;
-    const stored = await sdk.getData();
-    this.data = {
-      ...DEFAULTS,
-      ...stored,
-      daily: { ...DEFAULTS.daily, ...(stored.daily || {}) },
-    };
-    if (!this.data.ownedSkins.includes('classic')) this.data.ownedSkins.push('classic');
+  get data() { return this.store.data; }
+
+  async load() {
+    await this.store.load();
+    const d = this.store.data;
+    d.daily = { ...DEFAULTS.daily, ...(d.daily || {}) };
+    if (!Array.isArray(d.ownedSkins)) d.ownedSkins = [...DEFAULTS.ownedSkins];
+    if (!d.ownedSkins.includes('classic')) d.ownedSkins.push('classic');
   }
 
-  save() {
-    clearTimeout(this._saveTimer);
-    this._saveTimer = setTimeout(() => {
-      this.sdk?.setData(this.data);
-    }, 500);
-  }
-
-  /** Немедленная запись с flush — для критичных моментов (game over, покупка). */
-  saveNow() {
-    clearTimeout(this._saveTimer);
-    this.sdk?.setData(this.data, true);
-  }
+  /** Немедленный сброс в облако — критичные моменты (game over, покупка). */
+  saveNow() { this.store.flush(); }
 
   addCoins(n) {
-    this.data.coins += n;
-    this.saveNow();
+    this.store.update((d) => { d.coins += n; });
   }
 
   spendCoins(n) {
     if (this.data.coins < n) return false;
-    this.data.coins -= n;
+    this.store.update((d) => { d.coins -= n; });
     this.saveNow();
     return true;
   }
 
   /** Обновляет рекорд; возвращает true, если это новый рекорд. */
   submitScore(score) {
-    if (score > this.data.best) {
-      this.data.best = score;
-      this.saveNow();
-      return true;
-    }
-    return false;
+    if (score <= this.data.best) return false;
+    this.store.update((d) => { d.best = score; });
+    this.saveNow();
+    return true;
   }
 
   ownSkin(id) {
-    if (!this.data.ownedSkins.includes(id)) {
-      this.data.ownedSkins.push(id);
-      this.saveNow();
-    }
-  }
-
-  setActiveSkin(id) {
-    this.data.activeSkin = id;
+    if (this.data.ownedSkins.includes(id)) return;
+    this.store.update((d) => { d.ownedSkins.push(id); });
     this.saveNow();
   }
 
+  setActiveSkin(id) {
+    this.store.update((d) => { d.activeSkin = id; });
+  }
+
   toggleSound() {
-    this.data.soundOn = !this.data.soundOn;
-    this.save();
+    this.store.update((d) => { d.soundOn = !d.soundOn; });
     return this.data.soundOn;
   }
 
@@ -101,10 +85,13 @@ class Saves {
     const bonus = this.getDailyBonus();
     if (!bonus) return 0;
     const today = new Date().toISOString().slice(0, 10);
-    this.data.daily = { lastClaim: today, streak: bonus.streak };
-    this.data.coins += bonus.amount * multiplier;
+    const gain = bonus.amount * multiplier;
+    this.store.update((d) => {
+      d.daily = { lastClaim: today, streak: bonus.streak };
+      d.coins += gain;
+    });
     this.saveNow();
-    return bonus.amount * multiplier;
+    return gain;
   }
 }
 

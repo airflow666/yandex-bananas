@@ -1,10 +1,14 @@
 import Phaser from 'phaser';
 import { initSDK } from '../yandex/sdk.js';
+import { platform } from '../platform/yandex';
 import { saves } from '../systems/saves.js';
 import { ads } from '../systems/ads.js';
 import { audio } from '../systems/audio.js';
 import { setLang, t } from '../systems/i18n.js';
 import { GAME_W, GAME_H, FONT } from '../ui.js';
+
+/** Крайний срок, после которого готовность объявляется без участия Menu. */
+const READY_GUARD_MS = 12_000;
 
 /** Заглушка SDK на случай полного отказа инициализации — не даёт остальному
  *  коду (Menu, Game, Shop...) падать на вызовах несуществующих методов. */
@@ -46,6 +50,10 @@ export default class BootScene extends Phaser.Scene {
 
   async _boot(loadingText) {
     let sdk = null;
+    // Страховка: LoadingAPI.ready() штатно вызывается в Menu, но если сцена
+    // не доедет, лоадер Яндекса останется поверх игры навсегда. Запрос
+    // идемпотентен и буферизуется, так что лишним этот вызов не будет.
+    const readyGuard = setTimeout(() => platform.markLoaded(), READY_GUARD_MS);
     try {
       sdk = await initSDK();
       setLang(sdk.lang);
@@ -57,6 +65,7 @@ export default class BootScene extends Phaser.Scene {
       console.error('Boot init failed, starting with safe defaults', e);
       if (!sdk) sdk = noopSdk();
     } finally {
+      clearTimeout(readyGuard);
       this.registry.set('sdk', sdk);
       this.scene.start('Menu');
     }
