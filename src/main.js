@@ -1,3 +1,6 @@
+// Первым импортом — вешает обработчики ошибок до того, как выполнится
+// код остальных модулей.
+import { clearBootStatus } from './bootStatus.js';
 import Phaser from 'phaser';
 import { GAME_W, GAME_H } from './ui.js';
 import { audio } from './systems/audio.js';
@@ -21,6 +24,10 @@ const game = new Phaser.Game({
   },
   scene: [BootScene, MenuScene, GameScene, GameOverScene, ShopScene, LeaderboardScene],
 });
+
+// Бандл выполнился и Phaser сконструирован — заглушка из index.html больше
+// не нужна. Если она осталась на экране, значит до сюда дело не дошло.
+clearBootStatus();
 
 // Когда вкладка скрыта — глушим звук (реклама управляет звуком отдельно, см. ads.js)
 game.events.on(Phaser.Core.Events.HIDDEN, () => audio.ctx?.suspend());

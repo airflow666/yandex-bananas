@@ -261,6 +261,9 @@ function timeout(ms) {
  */
 function loadSdkScript() {
   return new Promise((resolve) => {
+    // Площадка может подключить SDK сама (или мы уже вызывались) — второй
+    // тег не нужен.
+    if (typeof window.YaGames !== 'undefined') { resolve(true); return; }
     const script = document.createElement('script');
     script.async = true;
     script.src = '/sdk.js';
@@ -272,8 +275,14 @@ function loadSdkScript() {
 
 export async function initSDK() {
   let ysdk = null;
-  const scriptLoaded = await Promise.race([loadSdkScript(), timeout(INIT_TIMEOUT_MS)]);
-  if (scriptLoaded && typeof window.YaGames !== 'undefined') {
+  await Promise.race([loadSdkScript(), timeout(INIT_TIMEOUT_MS)]);
+  // Решаем по наличию самого глобального YaGames, а не по результату
+  // loadSdkScript(): документация требует только того, чтобы /sdk.js был
+  // подключён до YaGames.init(). Если onload до нас почему-то не долетел
+  // (сработал таймаут гонки, SDK подключила сама площадка), объект всё
+  // равно есть — и init() надо звать, иначе платформа навсегда останется
+  // в состоянии «W» (SDK is not initialized. Wait for "init" call).
+  if (typeof window.YaGames !== 'undefined') {
     try {
       // На некоторых площадках/встраиваниях init() может зависнуть без reject —
       // ограничиваем ожидание, чтобы игра не застряла на загрузке навсегда.
