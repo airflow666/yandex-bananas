@@ -10,6 +10,9 @@ import { GAME_W, GAME_H, FONT } from '../ui.js';
 /** Крайний срок, после которого готовность объявляется без участия Menu. */
 const READY_GUARD_MS = 12_000;
 
+/** Крайний срок всей загрузки: меню открывается даже если платформа молчит. */
+const BOOT_DEADLINE_MS = 14_000;
+
 /** Заглушка SDK на случай полного отказа инициализации — не даёт остальному
  *  коду (Menu, Game, Shop...) падать на вызовах несуществующих методов. */
 function noopSdk() {
@@ -55,17 +58,30 @@ export default class BootScene extends Phaser.Scene {
     // идемпотентен и буферизуется, так что лишним этот вызов не будет.
     const readyGuard = setTimeout(() => platform.markLoaded(), READY_GUARD_MS);
     try {
-      sdk = await initSDK();
-      setLang(sdk.lang);
-      loadingText.setText(t('loading'));
-      await saves.load(sdk);
-      ads.init(sdk);
-      audio.setEnabled(saves.data.soundOn);
+      // Общий дедлайн на всю загрузку. Каждый await внутри имеет собственный
+      // таймаут, но полагаться только на них нельзя: достаточно одного
+      // незарезолвленного промиса, чтобы finally не выполнился и игрок
+      // остался на пустом фоне навсегда. Меню должно открыться при любом
+      // исходе — пусть и с дефолтными данными.
+      await Promise.race([
+        (async () => {
+          sdk = await initSDK();
+          setLang(sdk.lang);
+          loadingText.setText(t('loading'));
+          await saves.load(sdk);
+          ads.init(sdk);
+          audio.setEnabled(saves.data.soundOn);
+        })(),
+        new Promise((resolve) => setTimeout(resolve, BOOT_DEADLINE_MS)),
+      ]);
     } catch (e) {
       console.error('Boot init failed, starting with safe defaults', e);
-      if (!sdk) sdk = noopSdk();
     } finally {
       clearTimeout(readyGuard);
+      // Дедлайн выше срабатывает без исключения, поэтому заглушку ставим
+      // здесь: к этому моменту sdk может быть не присвоен ни при ошибке,
+      // ни при таймауте, а Menu вызывает его методы сразу в create().
+      if (!sdk) sdk = noopSdk();
       this.registry.set('sdk', sdk);
       this.scene.start('Menu');
     }

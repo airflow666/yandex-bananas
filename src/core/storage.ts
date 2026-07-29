@@ -24,6 +24,12 @@ const RATE_WINDOW_MS = 5 * 60_000;
 const DEBOUNCE_MS = 900;
 /** Нижняя граница между двумя облачными записями. */
 const MIN_GAP_MS = 3000;
+/** Сколько ждём облако при загрузке, прежде чем взять локальную копию. */
+const CLOUD_READ_TIMEOUT_MS = 5000;
+
+function delay(ms: number): Promise<void> {
+  return new Promise((resolve) => { setTimeout(resolve, ms); });
+}
 
 export class SaveStore<T extends Record<string, unknown>> {
   data: T;
@@ -50,7 +56,16 @@ export class SaveStore<T extends Record<string, unknown>> {
     const player = platform.getCloudPlayer();
     if (player) {
       try {
-        cloud = await player.getData();
+        // Дедлайн обязателен: try/catch ловит только отклонённый промис, а
+        // getData может не ответить вовсе — например когда исчерпан лимит
+        // (100 запросов за 5 минут) при частых перезагрузках страницы.
+        // Без гонки здесь загрузка не возвращается никогда, Boot не доходит
+        // до старта Menu, и игрок видит пустой фон — это и есть п. 1.14.
+        cloud = await Promise.race([
+          player.getData(),
+          delay(CLOUD_READ_TIMEOUT_MS).then(() => null),
+        ]);
+        if (cloud === null) console.warn('[storage] getData timed out, using local copy');
       } catch (e) {
         console.warn('[storage] getData failed, using local copy', e);
       }
