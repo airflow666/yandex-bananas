@@ -1,6 +1,7 @@
 import Phaser from 'phaser';
 import { initSDK } from '../yandex/sdk.js';
 import { platform } from '../platform/yandex';
+import { markStep } from '../bootStatus.js';
 import { saves } from '../systems/saves.js';
 import { ads } from '../systems/ads.js';
 import { audio } from '../systems/audio.js';
@@ -44,6 +45,7 @@ export default class BootScene extends Phaser.Scene {
   constructor() { super('Boot'); }
 
   create() {
+    markStep('boot-create');
     const loadingText = this.add.text(GAME_W / 2, GAME_H / 2, '...', {
       fontFamily: FONT, fontSize: '56px', color: '#ffe680',
     }).setOrigin(0.5);
@@ -66,9 +68,11 @@ export default class BootScene extends Phaser.Scene {
       await Promise.race([
         (async () => {
           sdk = await initSDK();
+          markStep('sdk-init');
           setLang(sdk.lang);
           loadingText.setText(t('loading'));
           await saves.load(sdk);
+          markStep('saves-loaded');
           ads.init(sdk);
           audio.setEnabled(saves.data.soundOn);
         })(),

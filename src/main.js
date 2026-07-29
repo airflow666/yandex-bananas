@@ -1,6 +1,6 @@
 // Первым импортом — вешает обработчики ошибок до того, как выполнится
 // код остальных модулей.
-import { clearBootStatus } from './bootStatus.js';
+import { clearBootStatus, markStep, startWatchdog } from './bootStatus.js';
 import Phaser from 'phaser';
 import { GAME_W, GAME_H } from './ui.js';
 import { audio } from './systems/audio.js';
@@ -25,9 +25,35 @@ const game = new Phaser.Game({
   scene: [BootScene, MenuScene, GameScene, GameOverScene, ShopScene, LeaderboardScene],
 });
 
-// Бандл выполнился и Phaser сконструирован — заглушка из index.html больше
-// не нужна. Если она осталась на экране, значит до сюда дело не дошло.
-clearBootStatus();
+// Заглушку снимаем не по факту вызова конструктора, а по событию готовности
+// движка: конструктор возвращается синхронно, до создания рендерера, и
+// снятие заглушки здесь врало бы, если Phaser не поднялся.
+game.events.once(Phaser.Core.Events.READY, () => {
+  markStep('phaser-ready');
+  clearBootStatus();
+});
+
+// Сторож живёт вне Phaser: если движок не поднимется вообще, ни один
+// таймер внутри сцен не выполнится, и без этого игрок остался бы на пустом
+// фоне без единого признака происходящего.
+startWatchdog();
+
+// Освобождаем контекст рендерера при уходе со страницы. Браузер держит
+// ограниченное число живых WebGL-контекстов, и быстрые перезагрузки подряд
+// (сценарий, которым проверяют п. 1.14) способны упереться в этот предел —
+// тогда движок не стартует на пустом фоне.
+window.addEventListener('pagehide', () => {
+  try { game.destroy(true); } catch { /* уже уничтожен */ }
+});
+
+// Обратная сторона destroy(): при возврате «назад» страница может быть
+// восстановлена из bfcache вместе с уже уничтоженной игрой — получился бы
+// мёртвый канвас. Навигация по истории явно перечислена в п. 1.14, поэтому
+// восстановленную страницу перезагружаем; прогресс от этого не страдает,
+// он лежит в localStorage и в облаке.
+window.addEventListener('pageshow', (e) => {
+  if (e.persisted) location.reload();
+});
 
 // Когда вкладка скрыта — глушим звук (реклама управляет звуком отдельно, см. ads.js)
 game.events.on(Phaser.Core.Events.HIDDEN, () => audio.ctx?.suspend());

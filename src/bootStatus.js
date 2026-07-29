@@ -1,45 +1,82 @@
 /**
- * Экран загрузки/ошибки из index.html.
+ * Экран загрузки, трассировка старта и сторож.
  *
- * Заглушка `#boot-status` отрисована обычным HTML+CSS (без инлайнового JS,
- * чтобы её нельзя было потерять из-за CSP площадки) и снимается отсюда,
- * когда бандл действительно выполнился. Смысл не косметический: фон body
- * и backgroundColor канваса Phaser — один и тот же #1a2f1a, так что без
- * этой надписи «JS не загрузился/упал при разборе» и «Phaser стартовал, но
- * завис в Boot» дают на экране абсолютно одинаковую картинку. Так состояние
- * читается прямо в игре, без DevTools — что важно, когда воспроизвести
- * проблему можно только в черновике на самой площадке.
+ * Зачем так подробно: игра на площадке крутится в кросс-доменном iframe, её
+ * консоль снаружи не читается, а каждый цикл проверки требует перезаливки
+ * архива. Поэтому состояние загрузки выводится прямо на экран — один заход
+ * на черновик должен отвечать на вопрос «где встало», а не порождать
+ * следующую гипотезу.
+ *
+ * Прошлая версия врала: `clearBootStatus()` вызывался сразу после
+ * конструктора `new Phaser.Game()`, то есть ДО того, как Phaser реально
+ * поднимется. Заглушка исчезала даже если движок не стартовал, и пустой
+ * зелёный фон снова становился неотличим от зависшей сцены. Теперь заглушку
+ * снимает событие готовности Phaser, а не факт вызова конструктора.
  */
 
+/** Шаги старта по порядку; сторож покажет, до какого дошли. */
+const STEPS = ['bundle', 'phaser-ready', 'boot-create', 'sdk-init', 'saves-loaded', 'menu'];
+
+/** Если через столько меню не открылось — показываем трассировку. */
+const WATCHDOG_MS = 15_000;
+
+const reached = [];
 let booted = false;
+let watchdog = null;
 
 const el = () => document.getElementById('boot-status');
 
-/** Убрать заглушку — бандл выполнился и игра сконструирована. */
+/** Отметить пройденный этап загрузки. */
+export function markStep(name) {
+  if (reached.includes(name)) return;
+  reached.push(name);
+  window.__bootTrace = reached.slice();
+  if (name === 'menu') {
+    booted = true;
+    clearTimeout(watchdog);
+    el()?.remove();
+  }
+}
+
+/** Убрать заглушку — движок поднялся и что-то рисует. */
 export function clearBootStatus() {
-  booted = true;
   el()?.remove();
 }
 
-/** Показать текст ошибки поверх пустого фона (только до старта игры). */
-function showBootError(message) {
-  const node = el();
-  if (!node) return;
+/** Показать, до какого этапа дошла загрузка, вместо молчаливого фона. */
+function showTrace(title) {
+  let node = el();
+  if (!node) {
+    node = document.createElement('div');
+    node.id = 'boot-status';
+    document.body.appendChild(node);
+  }
   node.innerHTML = '';
-  const title = document.createElement('div');
-  title.textContent = 'Ошибка загрузки / Failed to load';
+  const head = document.createElement('div');
+  head.textContent = title;
   const detail = document.createElement('div');
   detail.className = 'err';
-  detail.textContent = String(message);
-  node.append(title, detail);
+  // Пройденные этапы и первый непройденный — этого достаточно, чтобы понять,
+  // умер ли бандл, движок, инициализация платформы или переход в меню.
+  const stuckAt = STEPS.find((s) => !reached.includes(s)) || '—';
+  detail.textContent = `ok: ${reached.join(' → ') || 'ничего'}\nстоп: ${stuckAt}`;
+  node.append(head, detail);
 }
 
-// Регистрируем до создания игры: падение на этапе загрузки перестаёт быть
-// молчаливым пустым фоном. После clearBootStatus() ничего не перехватываем —
-// ошибка в середине геймплея не должна закрывать игру красной плашкой.
+export function startWatchdog() {
+  clearTimeout(watchdog);
+  watchdog = setTimeout(() => {
+    if (booted) return;
+    showTrace('Игра не запустилась / Game did not start');
+  }, WATCHDOG_MS);
+}
+
+// Модуль импортируется первым, поэтому его выполнение = «бандл ожил».
+markStep('bundle');
+
 window.addEventListener('error', (e) => {
-  if (!booted) showBootError(e.message || e.error || 'script error');
+  if (!booted) showTrace(`Ошибка: ${e.message || e.error || 'script error'}`);
 });
 window.addEventListener('unhandledrejection', (e) => {
-  if (!booted) showBootError(e.reason?.message || e.reason || 'unhandled rejection');
+  if (!booted) showTrace(`Ошибка: ${e.reason?.message || e.reason || 'unhandled rejection'}`);
 });

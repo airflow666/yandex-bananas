@@ -4,11 +4,13 @@ import { saves } from '../systems/saves.js';
 import { ads } from '../systems/ads.js';
 import { audio } from '../systems/audio.js';
 import { t } from '../systems/i18n.js';
+import { markStep } from '../bootStatus.js';
 
 export default class MenuScene extends Phaser.Scene {
   constructor() { super('Menu'); }
 
   create() {
+    markStep('menu');
     this.sdk = this.registry.get('sdk');
     this.add.rectangle(0, 0, GAME_W, GAME_H, 0x1b4332).setOrigin(0);
 
