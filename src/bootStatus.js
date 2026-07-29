@@ -14,11 +14,13 @@
  * снимает событие готовности Phaser, а не факт вызова конструктора.
  */
 
+import { platform } from './platform/yandex';
+
 /** Шаги старта по порядку; сторож покажет, до какого дошли. */
 const STEPS = ['bundle', 'phaser-ready', 'boot-create', 'sdk-init', 'saves-loaded', 'menu'];
 
 /** Если через столько меню не открылось — показываем трассировку. */
-const WATCHDOG_MS = 15_000;
+const WATCHDOG_MS = 10_000;
 
 const reached = [];
 let booted = false;
@@ -67,6 +69,12 @@ export function startWatchdog() {
   clearTimeout(watchdog);
   watchdog = setTimeout(() => {
     if (booted) return;
+    // Без этого трассировку не видно вообще: собственный лоадер Яндекса
+    // висит поверх игрового фрейма, пока не придёт LoadingAPI.ready(), а
+    // штатный вызов живёт внутри сцены Boot — то есть ровно там, куда мы
+    // не дошли. Сообщаем о готовности сами, иначе диагностика бесполезна
+    // именно в том случае, ради которого написана.
+    platform.markLoaded();
     showTrace('Игра не запустилась / Game did not start');
   }, WATCHDOG_MS);
 }
