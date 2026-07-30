@@ -11,17 +11,32 @@
       width: 100%;
       height: 100%;
       overflow: hidden;
-      background: #1a2f1a;
+      background: #04160f;
+      /* touch-action гасит жесты внутри страницы, но НЕ «потяни вниз, чтобы
+         обновить»: этот жест обрабатывает сам браузер на уровне прокрутки
+         документа, и снимается он только overscroll-behavior. Без него
+         свайп вниз в начале забега перезагружал бы страницу. */
+      overscroll-behavior: none;
       touch-action: none;
       -webkit-user-select: none;
       user-select: none;
+      /* Подсветка тапа на мобильных: без этого по каждому касанию проходит
+         серый прямоугольник поверх канваса. */
+      -webkit-tap-highlight-color: transparent;
     }
     #game {
       width: 100%;
       height: 100%;
     }
-    /* Заглушка на время загрузки бандла; снимается из src/main.js.
-       Только HTML+CSS, без инлайнового JS. */
+    /* Заставка на время загрузки бандла; снимается из src/main.ts.
+       Только HTML+CSS, без инлайнового JS.
+
+       Текста здесь намеренно НЕТ. Раньше стояло «Загрузка… / Loading…» —
+       две надписи сразу, потому что до старта бандла язык игрока ещё
+       неизвестен, а выбрать его без JS нельзя. Выглядело это как недоделка.
+       Анимация из трёх «ящиков», собирающихся в башню, языконезависима,
+       сразу сообщает, во что игрок сейчас будет играть, и не требует ни
+       одного слова. */
     #boot-status {
       position: fixed;
       inset: 0;
@@ -29,36 +44,70 @@
       align-items: center;
       justify-content: center;
       flex-direction: column;
-      gap: 12px;
+      gap: 10px;
       padding: 24px;
       box-sizing: border-box;
-      font: 16px/1.4 system-ui, sans-serif;
-      color: #ffe680;
-      text-align: center;
       pointer-events: none;
     }
+    #boot-status .crate {
+      width: 92px;
+      height: 22px;
+      border-radius: 5px;
+      background: linear-gradient(180deg, #6b4a2f 0%, #4a3121 55%, #2e1d12 100%);
+      box-shadow: inset 0 2px 0 rgba(255, 212, 94, .35);
+      opacity: .25;
+      animation: stack 1.4s ease-in-out infinite;
+    }
+    /* Ящики загораются снизу вверх — башня «строится», а не мигает. */
+    #boot-status .crate:nth-child(1) { animation-delay: .0s }
+    #boot-status .crate:nth-child(2) { animation-delay: .18s; width: 80px }
+    #boot-status .crate:nth-child(3) { animation-delay: .36s; width: 68px }
+    @keyframes stack {
+      0%, 70%, 100% { opacity: .25; transform: translateY(0) }
+      35%           { opacity: 1;   transform: translateY(-5px) }
+    }
+    /* Порядок в разметке — сверху вниз, поэтому самый узкий ящик первый. */
+    #boot-status .stack {
+      display: flex;
+      flex-direction: column-reverse;
+      align-items: center;
+      gap: 4px;
+    }
+    /* Текст остаётся только для единственного фатального случая: бандл не
+       выполнился. Тогда молчаливая анимация неотличима от зависания. */
     #boot-status .err {
-      font-size: 13px;
+      font: 13px/1.4 system-ui, sans-serif;
       color: #ff9a9a;
       max-width: 90%;
       word-break: break-word;
       white-space: pre-wrap;
+      text-align: center;
+    }
+    /* Уважение к системной настройке «меньше движения». */
+    @media (prefers-reduced-motion: reduce) {
+      #boot-status .crate { animation: none; opacity: .7 }
     }
   </style>
-  <!-- SDK Яндекс Игр подключается не тегом в разметке, а программно из
-       src/yandex/sdk.js (document.createElement) — документация называет
-       динамическое подключение равноправным способом, и оно снимает гонку
-       состояний между async-загрузкой SDK и нашим модулем. Путь именно
-       относительный /sdk.js: абсолютный нужен только при встраивании через
-       iframe со своего домена. -->
+  <!-- Платформенный SDK подключается не тегом в разметке, а программно из
+       src/platform/sdkLoader.ts (document.createElement) — так снимается
+       гонка между его async-загрузкой и нашим модулем: игра стартует, не
+       дожидаясь платформы, а опоздавший SDK подхватывается. Путь именно
+       относительный, /sdk.js — абсолютных URL в коде быть не должно. -->
 </head>
 <body>
   <div id="game"></div>
   <!-- Виден, пока не выполнился JS-бандл. Нужен не только для UX: фон body
-       и backgroundColor канваса Phaser — один и тот же #1a2f1a, поэтому без
-       этой надписи «бандл не загрузился» и «Phaser стартовал, но завис»
-       выглядят на экране одинаково и неотличимы без DevTools. -->
-  <div id="boot-status">Загрузка… / Loading…</div>
+       и фон игры — один и тот же тёмный цвет, поэтому без этой надписи
+       «бандл не загрузился» и «игра стартовала, но зависла» выглядят на
+       экране одинаково и неотличимы без DevTools. Снимается в main.ts
+       сразу после первого кадра. -->
+  <div id="boot-status">
+    <div class="stack">
+      <div class="crate"></div>
+      <div class="crate"></div>
+      <div class="crate"></div>
+    </div>
+  </div>
   <script type="module" src="./src/main.ts"></script>
 </body>
 </html>

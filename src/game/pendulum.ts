@@ -40,8 +40,11 @@ export class Pendulum {
     return base * (1 + 0.35 * Math.log(1 + floors / 8));
   }
 
+  /** Множитель скорости от режима: в шторме маятник на четверть быстрее. */
+  speedScale = 1;
+
   update(dt: number, floors: number): void {
-    this.phase += Pendulum.omegaFor(floors) * dt;
+    this.phase += Pendulum.omegaFor(floors) * this.speedScale * dt;
     if (this.phase > Math.PI * 2) this.phase -= Math.PI * 2;
   }
 

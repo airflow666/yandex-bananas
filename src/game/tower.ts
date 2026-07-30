@@ -30,6 +30,41 @@ const LEAN_GAIN = 0.42;
 /** Больше этого угла башня считается рухнувшей. */
 export const MAX_LEAN = 0.38;
 
+/**
+ * Ограничитель плеча крена, в этажах.
+ *
+ * Физически башня поворачивается вокруг фундамента, и смещение верхушки
+ * равно sin(угол) × полная высота. На сотом этаже это плечо огромно: поворот
+ * на 3° уводит верх на сотни единиц вбок. Беда в том, что фундамент к этому
+ * моменту далеко за нижней кромкой кадра, и глазу не за что зацепиться —
+ * видимый кусок башни едет вбок ЦЕЛИКОМ и выглядит не накренившимся, а
+ * летающим по воздуху.
+ *
+ * Поэтому плечо ограничено: башня ведёт себя как жёсткая стопка, шарнир
+ * которой находится на 12 этажей ниже верхушки, то есть чуть ниже кадра.
+ * Видимая часть при этом честно поворачивается вокруг точки под собой.
+ * Величина используется И в прицеливании, И в отрисовке — разъехаться они
+ * не могут по построению.
+ */
+export const LEVER_FLOORS = 12;
+
+/**
+ * Ниже этого этажа биом безветренный — игрок успевает освоиться.
+ * В шторме перекрывается параметром режима (`windFrom = 0`).
+ */
+const WIND_START_FLOOR = 10;
+/** На стольких этажах ветер набирает полную силу. */
+const WIND_RAMP_FLOORS = 35;
+/** Максимальный вклад ветра в целевой угол — доля MAX_LEAN, не фатальная сама по себе. */
+export const WIND_MAX_ANGLE = 0.11;
+/** Два наложенных синуса с медленными периодами — порыв должен быть читаем, не шум. */
+const WIND_FREQ_1 = (Math.PI * 2) / 7.5;
+const WIND_FREQ_2 = (Math.PI * 2) / 3.1;
+
+function clamp01(v: number): number {
+  return Math.min(1, Math.max(0, v));
+}
+
 export class Tower {
   blocks: Block[] = [];
 
@@ -37,8 +72,13 @@ export class Tower {
   angle = 0;
   private angleVel = 0;
 
-  /** Ветер биома добавляется к целевому углу. */
+  /** Ветер биома добавляется к целевому углу — считается сам от высоты и времени. */
   wind = 0;
+  private windTime = 0;
+
+  /** Коэффициенты режима: шторм усиливает ветер и убирает его отсрочку. */
+  windScale = 1;
+  windFrom = WIND_START_FLOOR;
 
   constructor(private readonly baseX: number) {
     this.blocks.push({ x: baseX, w: M.baseW, floor: 0, perfect: false });
@@ -79,7 +119,27 @@ export class Tower {
     return offset * LEAN_GAIN + this.wind;
   }
 
+  /**
+   * Ветер как функция высоты: ниже WIND_START_FLOOR — тишина, дальше сила
+   * растёт по квадрату (ощутимо позже, но потом быстро) и никогда не
+   * перестаёт расти дальше потолка WIND_MAX_ANGLE. Два синуса разной частоты
+   * вместо одного дают порыв, а не метроном, но остаются предсказуемыми —
+   * игрок должен успевать прочитать порыв, а не гадать.
+   */
+  private windFor(floors: number): number {
+    const ramp = clamp01((floors - this.windFrom) / WIND_RAMP_FLOORS);
+    // В шторме windFrom = 0, поэтому ramp ненулевой с первого этажа, а
+    // windScale = 2 удваивает потолок: ветер там — не поздняя угроза, а
+    // условие игры с самого начала.
+    const amp = WIND_MAX_ANGLE * this.windScale * ramp * ramp;
+    const gust = 0.7 * Math.sin(this.windTime * WIND_FREQ_1)
+      + 0.3 * Math.sin(this.windTime * WIND_FREQ_2 + 1.7);
+    return amp * gust;
+  }
+
   update(dt: number): void {
+    this.windTime += dt;
+    this.wind = this.windFor(this.floors);
     const target = this.targetAngle();
     const accel = -SPRING_K * (this.angle - target) - SPRING_DAMP * this.angleVel;
     this.angleVel += accel * dt;
@@ -95,8 +155,13 @@ export class Tower {
     return Math.abs(this.angle) > MAX_LEAN;
   }
 
+  /** Плечо крена в логических единицах — общее для прицеливания и отрисовки. */
+  leverLength(): number {
+    return Math.min(this.floors, LEVER_FLOORS) * M.floorH;
+  }
+
   /** Смещение верха башни из-за крена — цель, по которой целится игрок, движется. */
   topOffsetX(): number {
-    return Math.sin(this.angle) * this.floors * M.floorH;
+    return Math.sin(this.angle) * this.leverLength();
   }
 }

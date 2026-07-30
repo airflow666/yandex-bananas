@@ -55,6 +55,23 @@ function resize(): void {
 
   // Логическая высота постоянна, поэтому масштаб выводим из неё.
   scale = (h * dpr) / layout.height;
+  // Спрайты растеризованы под конкретный масштаб: смена монитора или поворот
+  // экрана обязаны запустить пере-растеризацию, иначе вектор «замылится».
+  scaleListeners.forEach((fn) => {
+    try { fn(scale); } catch (e) { console.warn('[canvas] scale listener failed', e); }
+  });
+}
+
+type ScaleListener = (scale: number) => void;
+const scaleListeners = new Set<ScaleListener>();
+
+/** Масштаб «логическая единица → физический пиксель». */
+export function getPixelScale(): number { return scale; }
+
+/** Подписка на смену масштаба — для пере-растеризации векторных спрайтов. */
+export function onPixelScale(fn: ScaleListener): () => void {
+  scaleListeners.add(fn);
+  return () => scaleListeners.delete(fn);
 }
 
 /** Установить трансформацию «логические единицы → пиксели». Вызывать в начале кадра. */
